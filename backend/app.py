@@ -37,9 +37,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-model = YOLO("yolov8n.pt")  # downloads weights on first run
-model.to("cuda")
-print("Model device:", next(model.model.parameters()).device)
+model_gpu = YOLO("yolov8n.pt")  # downloads weights on first run
+model_gpu.to("cuda")
+model_cpu = None
+print("Model device:", next(model_gpu.model.parameters()).device)
 STRIDE = 2
 # --- endpoints ---
 
@@ -75,7 +76,7 @@ def get_tracks(job_id: str):
         return JSONResponse({"error": "Tracks not found. Run /api/process/{job_id} first."}, status_code=404)
     return FileResponse(str(tracks_path), media_type="application/json")
 @app.post("/api/process/{job_id}")
-def process(job_id: str):
+def process(job_id: str, use_gpu: int = 1):
     video_path = UPLOADS / f"{job_id}.mp4"
     if not video_path.exists():
         return JSONResponse({"error": "Video not found"}, status_code=404)
@@ -98,6 +99,20 @@ def process(job_id: str):
 
     frames_out = []
 
+    use_gpu = bool(use_gpu)
+    global model_cpu
+    if use_gpu:
+        model = model_gpu
+        device = "cuda:0"
+        half = True
+    else:
+        if model_cpu is None:
+            model_cpu = YOLO("yolov8n.pt")
+            model_cpu.to("cpu")
+        model = model_cpu
+        device = "cpu"
+        half = False
+
     results_stream = model.track(
     source=str(video_path),
     stream=True,
@@ -108,8 +123,8 @@ def process(job_id: str):
 
     tracker="bytetrack.yaml",
     verbose=False,
-    device="cuda:0",       # force GPU 0
-    half=True,       # FP16 (faster on NVIDIA)
+    device=device,
+    half=half,
     imgsz=640,       # smaller input = faster
     vid_stride=STRIDE,    # process every 2nd frame (~15 fps)
 )

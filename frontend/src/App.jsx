@@ -10,6 +10,7 @@ export default function App() {
   const [status, setStatus] = useState("idle");
   const [processing, setProcessing] = useState(false);
   const [processed, setProcessed] = useState(false);
+  const [useGpu, setUseGpu] = useState(true);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [tracks, setTracks] = useState(null);
@@ -56,7 +57,7 @@ async function loadTracks(id) {
     setProcessing(true);
     setStatus("processing");
     try {
-      await axios.post(`${API}/api/process/${jobId}`, null, {
+      await axios.post(`${API}/api/process/${jobId}?use_gpu=${useGpu ? 1 : 0}`, null, {
         timeout: 30 * 60 * 1000, // processing can take a while
       });
       setProcessed(true);
@@ -77,7 +78,7 @@ async function loadTracks(id) {
     <div className="page">
       <div className="card">
         <div className="title">HeadHuntr</div>
-        <div className="sub">Upload MP4 → Process → Download annotated MP4</div>
+        <div className="sub">Upload any MP4 → Track heads in frame</div>
 
         <div className="row">
           <input
@@ -85,6 +86,14 @@ async function loadTracks(id) {
             accept="video/mp4"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={useGpu}
+              onChange={(e) => setUseGpu(e.target.checked)}
+            />
+            Use GPU
+          </label>
           <button onClick={upload} disabled={!file || status.startsWith("uploading")}>
             {status.startsWith("uploading") ? status : "Upload"}
           </button>
