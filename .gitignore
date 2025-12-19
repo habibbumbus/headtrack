@@ -1,0 +1,9 @@
+.venv/
+**/__pycache__/
+*.pyc
+backend/__pycache__/
+frontend/node_modules/
+uploads/
+runs/
+.DS_Store
+*.log
